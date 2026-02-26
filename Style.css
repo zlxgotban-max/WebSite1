@@ -1,0 +1,196 @@
+
+
+body {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    color: #cbd5e1 !important;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    line-height: 1.6 !important;
+}
+
+
+h1 {
+    color: #38bdf8 !important;
+    text-align: center !important;
+    font-size: 2.5rem !important;
+    font-weight: 700 !important;
+    text-shadow: 0 2px 15px rgba(56, 189, 248, 0.5) !important;
+    margin-bottom: 30px !important;
+}
+
+.agenda {
+    color: rgb(248, 248, 248);
+    text-align: left;
+    font-size: xx-large;
+}
+
+.agenda1 {
+    color: rgb(0, 162, 255);
+    text-align: center;
+    font-size: xx-large;
+}
+
+.web {
+    color: rgb(255, 255, 255);
+    text-align: center;
+    font-size: xx-large;
+    margin-bottom: -5px;
+}
+
+
+h2, h3 {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    margin-bottom: 15px !important;
+}
+
+
+article, section, .card, .container, main > div {
+    background: rgba(51, 65, 85, 0.95) !important;
+    border: 2px solid rgba(148, 163, 184, 0.3) !important;
+    border-radius: 20px !important;
+    padding: 35px !important;
+    margin: 25px auto !important;
+    max-width: 900px !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+    display: block !important;
+}
+
+
+article:hover, section:hover, .card:hover, .container:hover, .content:hover, main > div:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: 0 12px 35px rgba(56, 189, 248, 0.3) !important;
+    border-color: rgba(56, 189, 248, 0.5) !important;
+    transition: all 0.3s ease !important;
+}
+
+
+a {
+    color: #38bdf8 !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    transition: 0.3s !important;
+}
+
+a:hover {
+    color: #7dd3fc !important;
+    text-decoration: underline !important;
+}
+
+
+img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 12px !important;
+    display: block !important;
+    margin: 20px auto !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+}
+
+
+ul, ol {
+    background: rgba(30, 41, 59, 0.7) !important;
+    padding: 20px 40px !important;
+    border-radius: 12px !important;
+    border-left: 4px solid #38bdf8 !important;
+    margin: 15px 0 !important;
+}
+
+li {
+    margin-bottom: 10px !important;
+    color: #e2e8f0 !important;
+}
+
+
+
+
+p {
+    color: #cbd5e1 !important;
+    margin-bottom: 15px !important;
+}
+
+/* Botao do: Uiverse.io by vinodjangid07*/
+
+.Btn-Container {
+  display: flex;
+  width: 170px;
+  height: fit-content;
+  background-color: #1d2129;
+  border-radius: 40px;
+  box-shadow: 0px 5px 10px #bebebe;
+  justify-content: space-between;
+  align-items: center;
+  border: none;
+  cursor: pointer;
+}
+
+.text {
+  width: calc(170px - 45px);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.1em;
+  letter-spacing: 1.2px;
+}
+
+.icon-Container {
+  width: 45px;
+  height: 45px;
+  background-color: #f59aff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 3px solid #1d2129;
+}
+
+.icon-Container svg {
+  transition-duration: 1.5s;
+}
+
+
+.Btn-Container.right:hover .icon-Container svg {
+  animation: arrow-right 1s linear infinite;
+}
+
+
+.Btn-Container.left .icon-Container svg {
+  transform: scaleX(-1); 
+}
+.Btn-Container.left:hover .icon-Container svg {
+  animation: arrow-left 1s linear infinite;
+}
+
+
+.button-row {
+  display: flex;
+  align-items: center;      
+  gap: 20px;               
+}
+
+
+.Btn-Container.left {
+  flex-direction: row-reverse;  
+}
+
+
+.Btn-Container.right {
+  margin-left: auto;         
+}
+
+
+@keyframes arrow-right {
+  0% { opacity: 0; margin-left: 0; }
+  100% { opacity: 1; margin-left: 10px; }
+}
+
+
+@keyframes arrow-left {
+  0% { opacity: 0; margin-left: 0; }
+  100% { opacity: 1; margin-left: -10px; }
+}
+
+
