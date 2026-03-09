@@ -1,0 +1,2225 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Mirror - Conecte-se com seu Reflexo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
+            background: var(--dark);
+            color: var(--light);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--dark); }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(var(--primary), var(--secondary)); border-radius: 4px; }
+
+        .aurora-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); overflow: hidden; }
+        .aurora-blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.6; animation: float 20s infinite ease-in-out; }
+        .blob-1 { width: 600px; height: 600px; background: var(--primary); top: -200px; left: -100px; animation-delay: 0s; }
+        .blob-2 { width: 500px; height: 500px; background: var(--secondary); top: 50%; right: -150px; animation-delay: 5s; }
+        .blob-3 { width: 400px; height: 400px; background: var(--accent); bottom: -100px; left: 30%; animation-delay: 10s; }
+        @keyframes float { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -50px) scale(1.1); } 66% { transform: translate(-20px, 20px) scale(0.9); } }
+
+        header { position: fixed; top: 0; width: 100%; padding: 1.5rem 5%; display: flex; justify-content: space-between; align-items: center; z-index: 1000; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); transition: all 0.3s ease; }
+        .logo { font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, var(--light) 0%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: transform 0.3s ease; }
+        .logo:hover { transform: scale(1.05); }
+        .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 12px; display: flex; align-items: center; justify-content: center; -webkit-text-fill-color: white; font-size: 1.4rem; box-shadow: 0 0 20px rgba(99, 102, 241, 0.5); }
+
+        /* Header right side */
+        .header-right { display: flex; align-items: center; gap: 1rem; }
+
+        /* Cart Button in Header */
+        .cart-btn-header {
+            position: relative;
+            width: 46px; height: 46px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 1.3rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        .cart-btn-header:hover { background: var(--primary); transform: scale(1.1); box-shadow: 0 0 20px rgba(99,102,241,0.5); }
+        .cart-count {
+            position: absolute; top: -6px; right: -6px;
+            width: 22px; height: 22px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            border-radius: 50%;
+            font-size: 0.7rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            color: white;
+            opacity: 0; transform: scale(0);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .cart-count.visible { opacity: 1; transform: scale(1); }
+
+        .menu-toggle { width: 40px; height: 40px; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; z-index: 1001; transition: transform 0.3s ease; }
+        .menu-toggle:hover { transform: rotate(90deg); }
+        .menu-toggle span { width: 30px; height: 3px; background: var(--light); border-radius: 3px; transition: all 0.3s ease; transform-origin: center; }
+        .menu-toggle.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
+        .menu-toggle.active span:nth-child(2) { opacity: 0; }
+        .menu-toggle.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
+
+        .nav-menu { position: fixed; top: 0; right: -100%; width: 100%; height: 100vh; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(30px); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2rem; transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1); z-index: 999; }
+        .nav-menu.active { right: 0; }
+        .nav-menu a { font-size: 2rem; color: var(--light); text-decoration: none; font-weight: 300; position: relative; opacity: 0; transform: translateX(50px); transition: all 0.3s ease; }
+        .nav-menu.active a { opacity: 1; transform: translateX(0); }
+        .nav-menu a::after { content: ''; position: absolute; bottom: -5px; left: 0; width: 0; height: 2px; background: linear-gradient(90deg, var(--primary), var(--secondary)); transition: width 0.3s ease; }
+        .nav-menu a:hover::after { width: 100%; }
+        .nav-menu a:hover { color: var(--accent); transform: translateX(10px); }
+
+        .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 0 5%; position: relative; overflow: hidden; }
+        .hero-content { text-align: center; max-width: 900px; z-index: 2; }
+        .hero-badge { display: inline-block; padding: 0.5rem 1.5rem; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 50px; font-size: 0.9rem; color: var(--accent); margin-bottom: 2rem; backdrop-filter: blur(10px); animation: fadeInUp 1s ease; }
+        .hero h1 { font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 800; line-height: 1.1; margin-bottom: 1.5rem; background: linear-gradient(135deg, var(--light) 0%, var(--accent) 50%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: fadeInUp 1s ease 0.2s backwards; }
+        .hero p { font-size: 1.25rem; color: rgba(255, 255, 255, 0.8); margin-bottom: 2.5rem; max-width: 600px; margin-left: auto; margin-right: auto; animation: fadeInUp 1s ease 0.4s backwards; }
+        .cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; animation: fadeInUp 1s ease 0.6s backwards; }
+        .btn { padding: 1rem 2.5rem; border-radius: 50px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; position: relative; overflow: hidden; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border: none; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4); }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 20px 40px rgba(99, 102, 241, 0.6); }
+        .btn-secondary { background: var(--glass); color: var(--light); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-3px); }
+
+        .mirror-container { position: relative; width: 300px; height: 500px; margin: 4rem auto; perspective: 1000px; animation: fadeInUp 1s ease 0.8s backwards; }
+        .mirror-3d { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; animation: rotateMirror 15s infinite ease-in-out; }
+        @keyframes rotateMirror { 0%, 100% { transform: rotateY(-5deg) rotateX(5deg); } 50% { transform: rotateY(5deg) rotateX(-5deg); } }
+        .mirror-frame { position: absolute; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05)); border-radius: 30px; border: 2px solid rgba(255,255,255,0.3); backdrop-filter: blur(20px); box-shadow: 0 25px 50px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.2); overflow: hidden; }
+        .mirror-screen { position: absolute; top: 10%; left: 5%; right: 5%; bottom: 10%; background: linear-gradient(180deg, rgba(6,182,212,0.3), rgba(99,102,241,0.3)); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; }
+        .mirror-content { text-align: center; padding: 2rem; }
+        .emotion-indicator { width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle, var(--accent), var(--primary)); margin: 0 auto 1rem; animation: pulse 2s infinite; box-shadow: 0 0 30px var(--accent); }
+        @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
+        .mirror-text { font-size: 1.2rem; color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .mirror-widgets { display: flex; gap: 1rem; margin-top: 1rem; }
+        .widget { width: 50px; height: 50px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; backdrop-filter: blur(5px); animation: floatWidget 3s infinite ease-in-out; }
+        .widget:nth-child(2) { animation-delay: 0.5s; }
+        .widget:nth-child(3) { animation-delay: 1s; }
+        @keyframes floatWidget { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .features { padding: 8rem 5%; position: relative; }
+        .section-header { text-align: center; margin-bottom: 5rem; }
+        .section-header h2 { font-size: clamp(2rem, 5vw, 3.5rem); margin-bottom: 1rem; background: linear-gradient(135deg, var(--light), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .section-header p { color: rgba(255,255,255,0.7); font-size: 1.2rem; max-width: 600px; margin: 0 auto; }
+
+        .timeline { position: relative; max-width: 1200px; margin: 0 auto; }
+        .timeline::before { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 2px; height: 100%; background: linear-gradient(180deg, var(--primary), var(--secondary), var(--accent)); box-shadow: 0 0 20px var(--primary); }
+        .timeline-item { position: relative; margin-bottom: 4rem; width: 100%; display: flex; justify-content: center; opacity: 0; transform: translateY(50px); transition: all 0.8s ease; }
+        .timeline-item.visible { opacity: 1; transform: translateY(0); }
+        .timeline-content { width: 45%; padding: 2rem; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 20px; backdrop-filter: blur(20px); position: relative; transition: all 0.3s ease; }
+        .timeline-content:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); border-color: var(--accent); }
+        .timeline-item:nth-child(odd) .timeline-content { margin-right: auto; margin-left: 0; text-align: right; }
+        .timeline-item:nth-child(even) .timeline-content { margin-left: auto; margin-right: 0; text-align: left; }
+        .timeline-icon { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 0 30px rgba(99, 102, 241, 0.6); z-index: 10; border: 3px solid var(--dark); }
+        .timeline-content h3 { font-size: 1.5rem; margin-bottom: 1rem; color: var(--accent); }
+        .timeline-content p { color: rgba(255,255,255,0.8); line-height: 1.8; }
+        .feature-visual { width: 100%; height: 200px; margin-top: 1.5rem; border-radius: 15px; background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(236,72,153,0.3)); display: flex; align-items: center; justify-content: center; font-size: 3rem; position: relative; overflow: hidden; }
+        .emotion-waves { position: absolute; width: 100%; height: 100%; background: repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(6,182,212,0.3) 20px, rgba(6,182,212,0.3) 40px); animation: wave 3s infinite linear; }
+        @keyframes wave { 0% { transform: translateX(0); } 100% { transform: translateX(-40px); } }
+
+        .showcase { padding: 8rem 5%; background: rgba(15, 23, 42, 0.5); }
+        .carousel-container { max-width: 1400px; margin: 0 auto; position: relative; overflow: hidden; border-radius: 30px; }
+        .carousel-track { display: flex; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .carousel-slide { min-width: 100%; height: 600px; position: relative; overflow: hidden; }
+        .carousel-slide img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.7); transition: transform 0.5s ease; }
+        .carousel-slide:hover img { transform: scale(1.05); }
+        .carousel-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 3rem; background: linear-gradient(transparent, rgba(15,23,42,0.9)); backdrop-filter: blur(10px); }
+        .carousel-content h3 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .carousel-content p { color: rgba(255,255,255,0.8); }
+        .carousel-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; transition: all 0.3s ease; z-index: 10; }
+        .carousel-nav:hover { background: var(--primary); transform: translateY(-50%) scale(1.1); }
+        .carousel-prev { left: 2rem; }
+        .carousel-next { right: 2rem; }
+        .carousel-dots { display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.3); cursor: pointer; transition: all 0.3s ease; }
+        .dot.active { background: var(--accent); width: 30px; border-radius: 6px; }
+
+        .testimonials { padding: 8rem 5%; }
+        .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto; }
+        .testimonial-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 20px; padding: 2rem; backdrop-filter: blur(20px); transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .testimonial-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(99,102,241,0.1), transparent); opacity: 0; transition: opacity 0.3s ease; }
+        .testimonial-card:hover::before { opacity: 1; }
+        .testimonial-card:hover { transform: translateY(-10px); border-color: var(--primary); }
+        .testimonial-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+        .avatar { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; }
+        .testimonial-info h4 { color: var(--light); margin-bottom: 0.25rem; }
+        .testimonial-info span { color: var(--accent); font-size: 0.9rem; }
+        .testimonial-text { color: rgba(255,255,255,0.8); font-style: italic; line-height: 1.8; margin-bottom: 1.5rem; }
+        .progress-chart { height: 100px; background: rgba(0,0,0,0.3); border-radius: 10px; position: relative; overflow: hidden; display: flex; align-items: flex-end; padding: 10px; gap: 5px; }
+        .chart-bar { flex: 1; background: linear-gradient(180deg, var(--accent), var(--primary)); border-radius: 3px 3px 0 0; transition: height 1s ease; min-height: 20%; }
+
+        .demo-section { padding: 8rem 5%; background: linear-gradient(180deg, transparent, rgba(99,102,241,0.1), transparent); }
+        .demo-container { max-width: 800px; margin: 0 auto; text-align: center; }
+        .mood-simulator { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 30px; padding: 3rem; backdrop-filter: blur(20px); margin-top: 3rem; }
+        .mood-options { display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .mood-btn { padding: 1rem 2rem; border: 2px solid var(--glass-border); background: transparent; color: white; border-radius: 50px; cursor: pointer; transition: all 0.3s ease; font-size: 1.5rem; }
+        .mood-btn:hover, .mood-btn.active { background: var(--primary); border-color: var(--primary); transform: scale(1.1); }
+        .mirror-preview { width: 100%; max-width: 400px; height: 300px; margin: 0 auto; background: linear-gradient(135deg, rgba(6,182,212,0.2), rgba(99,102,241,0.2)); border-radius: 20px; border: 2px solid rgba(255,255,255,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; transition: all 0.5s ease; }
+        .mirror-preview.happy { background: linear-gradient(135deg, rgba(234,179,8,0.3), rgba(236,72,153,0.3)); box-shadow: 0 0 50px rgba(234,179,8,0.5); }
+        .mirror-preview.calm { background: linear-gradient(135deg, rgba(6,182,212,0.3), rgba(99,102,241,0.3)); box-shadow: 0 0 50px rgba(6,182,212,0.5); }
+        .mirror-preview.energetic { background: linear-gradient(135deg, rgba(239,68,68,0.3), rgba(234,179,8,0.3)); box-shadow: 0 0 50px rgba(239,68,68,0.5); }
+        .mirror-preview.focused { background: linear-gradient(135deg, rgba(139,92,246,0.3), rgba(6,182,212,0.3)); box-shadow: 0 0 50px rgba(139,92,246,0.5); }
+        .mirror-response { font-size: 1.2rem; color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 2; }
+
+        /* ===================== SHOP SECTION ===================== */
+        .shop-section {
+            padding: 8rem 5%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shop-section::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at 50% 50%, rgba(99,102,241,0.08), transparent 70%);
+            pointer-events: none;
+        }
+
+        .shop-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        /* Product Image Side */
+        .product-showcase {
+            position: relative;
+        }
+
+        .product-image-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3/4;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        .product-glow-ring {
+            position: absolute;
+            inset: -20px;
+            border-radius: 40px;
+            background: conic-gradient(from 0deg, var(--primary), var(--secondary), var(--accent), var(--primary));
+            animation: spinGlow 6s linear infinite;
+            filter: blur(20px);
+            opacity: 0.5;
+        }
+
+        @keyframes spinGlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .product-image-card {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 30px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(30,27,75,0.9));
+            backdrop-filter: blur(20px);
+            z-index: 1;
+        }
+
+        .product-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.85;
+            transition: transform 0.6s ease, opacity 0.4s ease;
+        }
+
+        .product-image-card:hover .product-img {
+            transform: scale(1.04);
+            opacity: 1;
+        }
+
+        .product-badge-floating {
+            position: absolute;
+            top: 1.5rem;
+            left: 1.5rem;
+            padding: 0.4rem 1rem;
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            z-index: 2;
+            box-shadow: 0 4px 20px rgba(6,182,212,0.4);
+        }
+
+        .product-rating-floating {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 1.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(15,23,42,0.85);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            backdrop-filter: blur(10px);
+            z-index: 2;
+        }
+
+        .stars { color: #fbbf24; letter-spacing: 2px; }
+
+        /* Floating stat chips around image */
+        .stat-chip {
+            position: absolute;
+            padding: 0.6rem 1rem;
+            background: rgba(15,23,42,0.9);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            font-size: 0.8rem;
+            backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            animation: chipFloat 4s ease-in-out infinite;
+            z-index: 3;
+            white-space: nowrap;
+        }
+        .stat-chip-1 { top: 15%; right: -80px; animation-delay: 0s; border-color: rgba(6,182,212,0.4); }
+        .stat-chip-2 { top: 50%; right: -100px; animation-delay: 1.5s; border-color: rgba(99,102,241,0.4); }
+        .stat-chip-3 { bottom: 20%; right: -85px; animation-delay: 3s; border-color: rgba(236,72,153,0.4); }
+        .stat-chip .chip-icon { font-size: 1rem; }
+        .chip-label { color: rgba(255,255,255,0.6); font-size: 0.7rem; }
+        .chip-value { color: white; font-weight: 600; }
+
+        @keyframes chipFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* Product Info Side */
+        .product-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1.8rem;
+        }
+
+        .product-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .product-title {
+            font-size: clamp(2rem, 3.5vw, 3rem);
+            font-weight: 800;
+            line-height: 1.1;
+            background: linear-gradient(135deg, var(--light) 0%, rgba(255,255,255,0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .product-subtitle {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.55);
+            font-weight: 400;
+            margin-top: -0.5rem;
+        }
+
+        .product-description {
+            color: rgba(255,255,255,0.75);
+            font-size: 1rem;
+            line-height: 1.8;
+            padding: 1.5rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Specs Pills */
+        .specs-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+        }
+
+        .spec-pill {
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.3s ease;
+        }
+
+        .spec-pill:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        /* Pricing Box */
+        .pricing-box {
+            background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(236,72,153,0.08));
+            border: 1px solid rgba(99,102,241,0.3);
+            border-radius: 24px;
+            padding: 1.8rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .price-block {}
+
+        .price-original {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.4);
+            text-decoration: line-through;
+            margin-bottom: 0.2rem;
+        }
+
+        .price-current {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+        }
+
+        .price-note {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.45);
+            margin-top: 0.3rem;
+        }
+
+        .price-discount-badge {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, rgba(6,182,212,0.25), rgba(6,182,212,0.1));
+            border: 1px solid rgba(6,182,212,0.4);
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-align: center;
+        }
+
+        /* Quantity selector */
+        .quantity-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .qty-label {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.6);
+            font-weight: 500;
+        }
+
+        .qty-control {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            overflow: hidden;
+        }
+
+        .qty-btn {
+            width: 40px; height: 40px;
+            border: none;
+            background: transparent;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .qty-btn:hover { background: rgba(99,102,241,0.3); }
+
+        .qty-display {
+            width: 44px;
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            border: none;
+            background: transparent;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-add-cart {
+            flex: 1;
+            padding: 1.1rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 16px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            box-shadow: 0 8px 30px rgba(99,102,241,0.35);
+            font-family: inherit;
+        }
+
+        .btn-add-cart:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 40px rgba(99,102,241,0.5);
+        }
+
+        .btn-add-cart:active { transform: scale(0.97); }
+
+        .btn-wishlist {
+            width: 54px; height: 54px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            border-radius: 16px;
+            color: white;
+            font-size: 1.3rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-wishlist:hover { border-color: #ec4899; background: rgba(236,72,153,0.15); transform: scale(1.05); }
+        .btn-wishlist.active { border-color: #ec4899; background: rgba(236,72,153,0.2); color: #ec4899; }
+
+        /* Guarantees */
+        .guarantees {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.8rem;
+        }
+
+        .guarantee-item {
+            text-align: center;
+            padding: 1rem 0.5rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .guarantee-item:hover { border-color: rgba(6,182,212,0.4); transform: translateY(-2px); }
+        .guarantee-icon { font-size: 1.4rem; display: block; margin-bottom: 0.4rem; }
+        .guarantee-text { font-size: 0.72rem; color: rgba(255,255,255,0.6); line-height: 1.4; }
+
+        /* ===================== CART SIDEBAR ===================== */
+        .cart-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .cart-overlay.open { opacity: 1; pointer-events: all; }
+
+        .cart-sidebar {
+            position: fixed;
+            top: 0; right: -480px;
+            width: 440px;
+            height: 100vh;
+            background: rgba(10,14,30,0.97);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(30px);
+            z-index: 2001;
+            transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .cart-sidebar.open { right: 0; }
+
+        .cart-header {
+            padding: 2rem 1.8rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .cart-header h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .cart-close {
+            width: 38px; height: 38px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: transparent;
+            color: white;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .cart-close:hover { background: rgba(255,255,255,0.1); transform: rotate(90deg); }
+
+        .cart-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem 1.8rem;
+        }
+
+        .cart-body::-webkit-scrollbar { width: 4px; }
+        .cart-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+        /* Empty state */
+        .cart-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 1rem;
+            opacity: 0.5;
+        }
+
+        .cart-empty-icon { font-size: 4rem; }
+        .cart-empty p { color: rgba(255,255,255,0.6); font-size: 1rem; }
+
+        /* Cart Item */
+        .cart-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1.2rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            animation: slideInItem 0.3s ease;
+        }
+
+        @keyframes slideInItem {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .cart-item-img {
+            width: 80px; height: 80px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(6,182,212,0.3));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem;
+            flex-shrink: 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+        }
+
+        .cart-item-img img { width: 100%; height: 100%; object-fit: cover; }
+
+        .cart-item-details { flex: 1; min-width: 0; }
+
+        .cart-item-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: white;
+            margin-bottom: 0.2rem;
+        }
+
+        .cart-item-variant {
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 0.8rem;
+        }
+
+        .cart-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cart-item-qty {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .cqty-btn {
+            width: 28px; height: 28px;
+            border: none; background: transparent;
+            color: white; font-size: 1rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .cqty-btn:hover { background: rgba(255,255,255,0.1); }
+
+        .cqty-val {
+            width: 28px;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .cart-item-price {
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .cart-item-remove {
+            width: 28px; height: 28px;
+            border: none; background: transparent;
+            color: rgba(255,255,255,0.3);
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .cart-item-remove:hover { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+        /* Cart Footer */
+        .cart-footer {
+            padding: 1.5rem 1.8rem 2rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
+        }
+
+        .cart-subtotal {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.6rem;
+        }
+
+        .cart-subtotal-label { color: rgba(255,255,255,0.5); font-size: 0.9rem; }
+        .cart-subtotal-value { font-weight: 600; color: white; }
+
+        .cart-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.08);
+            margin: 1rem 0;
+        }
+
+        .cart-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .cart-total-label { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.8); }
+        .cart-total-value { font-size: 1.6rem; font-weight: 800; color: white; }
+
+        .btn-checkout {
+            width: 100%;
+            padding: 1.1rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+            box-shadow: 0 8px 30px rgba(99,102,241,0.35);
+            margin-bottom: 0.8rem;
+        }
+
+        .btn-checkout:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(99,102,241,0.5); }
+
+        .cart-secure-note {
+            text-align: center;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        /* Added to cart toast */
+        .toast-notification {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: linear-gradient(135deg, rgba(6,182,212,0.9), rgba(99,102,241,0.9));
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 14px;
+            padding: 1rem 1.8rem;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            z-index: 3000;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        }
+
+        .toast-notification.show { transform: translateX(-50%) translateY(0); }
+
+        /* Shimmer button animation */
+        .btn-add-cart::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transition: left 0.5s ease;
+        }
+        .btn-add-cart { position: relative; overflow: hidden; }
+        .btn-add-cart:hover::after { left: 100%; }
+
+        /* ===================== PAYMENT MODAL ===================== */
+        .pay-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            z-index: 3000;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        .pay-overlay.open { opacity: 1; pointer-events: all; }
+
+        .pay-modal {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 94%; max-width: 520px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background: rgba(10,14,30,0.98);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 28px;
+            z-index: 3001;
+            padding: 2rem;
+            opacity: 0; pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .pay-modal::-webkit-scrollbar { width: 4px; }
+        .pay-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .pay-modal.open { opacity: 1; pointer-events: all; transform: translate(-50%, -50%) scale(1); }
+
+        .pay-modal-header {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        .pay-modal-label { font-size: 0.75rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+        .pay-modal-title { font-size: 1.5rem; font-weight: 800; color: white; }
+
+        .pay-close, .pay-back {
+            border: 1px solid rgba(255,255,255,0.15);
+            background: transparent; color: white;
+            border-radius: 10px; cursor: pointer;
+            font-size: 0.9rem; padding: 0.5rem 0.8rem;
+            transition: all 0.2s; font-family: inherit;
+            white-space: nowrap;
+        }
+        .pay-close:hover { background: rgba(255,255,255,0.1); transform: rotate(90deg); }
+        .pay-back:hover { background: rgba(99,102,241,0.2); border-color: var(--primary); }
+
+        .pay-order-summary {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 1.2rem;
+            background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(236,72,153,0.08));
+            border: 1px solid rgba(99,102,241,0.25);
+            border-radius: 14px;
+            margin-bottom: 1.5rem;
+        }
+        .pay-order-label { font-size: 0.85rem; color: rgba(255,255,255,0.55); }
+        .pay-order-total { font-size: 1.6rem; font-weight: 800; background: linear-gradient(135deg,white,var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .pay-methods-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 0.8rem; margin-bottom: 1.5rem;
+        }
+
+        .pay-method {
+            padding: 1rem 0.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.04);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .pay-method::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(99,102,241,0.15), transparent);
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .pay-method:hover::before { opacity: 1; }
+        .pay-method:hover { border-color: rgba(99,102,241,0.5); transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+        .pay-method.selected { border-color: var(--accent); box-shadow: 0 0 20px rgba(6,182,212,0.25); }
+
+        .pay-method-icon {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            margin: 0 auto 0.5rem;
+        }
+        .pay-method-name { font-size: 0.82rem; font-weight: 700; color: white; margin-bottom: 0.15rem; }
+        .pay-method-desc { font-size: 0.68rem; color: rgba(255,255,255,0.45); }
+
+        .pay-secure-badges {
+            display: flex; justify-content: center; gap: 1rem;
+            font-size: 0.72rem; color: rgba(255,255,255,0.35);
+        }
+
+        /* Step 2 detail panels */
+        .pay-detail { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.2rem; }
+        .pay-detail-icon { width: 64px; height: 64px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        .pay-detail-title { font-size: 1.4rem; font-weight: 800; color: white; margin: 0; }
+        .pay-detail-sub { font-size: 0.9rem; color: rgba(255,255,255,0.5); margin: -0.8rem 0 0; }
+
+        .pay-input-group { width: 100%; text-align: left; }
+        .pay-input-group label { display: block; font-size: 0.78rem; color: rgba(255,255,255,0.5); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; }
+        .pay-input {
+            width: 100%; padding: 0.8rem 1rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px; color: white;
+            font-size: 0.95rem; font-family: inherit;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+        .pay-input:focus { border-color: var(--accent); background: rgba(6,182,212,0.05); }
+        .pay-input::placeholder { color: rgba(255,255,255,0.25); }
+
+        .pay-input-prefix-wrap { display: flex; gap: 0; overflow: hidden; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; background: rgba(255,255,255,0.06); }
+        .pay-prefix { padding: 0.8rem 0.8rem; font-size: 0.85rem; color: rgba(255,255,255,0.6); border-right: 1px solid rgba(255,255,255,0.1); white-space: nowrap; display: flex; align-items: center; }
+        .pay-input-prefix-wrap .pay-input { border: none; background: transparent; border-radius: 0; }
+        .pay-input-prefix-wrap .pay-input:focus { background: transparent; }
+
+        .pay-input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; width: 100%; }
+
+        .card-brands { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
+        .card-brand { padding: 0.2rem 0.6rem; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.3); transition: all 0.2s; }
+        .card-brand.active { border-color: var(--accent); color: var(--accent); }
+
+        .pay-info-box {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            background: rgba(6,182,212,0.08);
+            border: 1px solid rgba(6,182,212,0.2);
+            border-radius: 12px;
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.65);
+            text-align: left;
+            line-height: 1.5;
+        }
+
+        .mb-ref-box {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .mb-ref-row {
+            display: flex; align-items: center; gap: 0.8rem;
+            padding: 0.9rem 1.2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .mb-ref-row:last-child { border-bottom: none; }
+        .mb-ref-label { font-size: 0.75rem; color: rgba(255,255,255,0.4); width: 90px; flex-shrink: 0; text-align: left; }
+        .mb-ref-value { font-size: 0.95rem; font-weight: 700; color: white; flex: 1; text-align: left; font-family: monospace; }
+        .copy-btn { border: 1px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.5); border-radius: 8px; padding: 0.3rem 0.5rem; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; display: flex; align-items: center; gap: 0.3rem; }
+        .copy-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .crypto-options { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
+        .crypto-opt {
+            padding: 0.5rem 1rem; border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 50px; font-size: 0.85rem; color: rgba(255,255,255,0.6);
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.4rem;
+        }
+        .crypto-opt:hover, .crypto-opt.active { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,0.1); }
+
+        .qr-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+        .qr-placeholder {
+            width: 160px; height: 160px;
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .qr-grid {
+            width: 100%; height: 100%;
+            display: grid; grid-template-columns: repeat(11,1fr); gap: 2px;
+        }
+        .qr-cell { border-radius: 1px; }
+
+        .crypto-addr-box { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 0.8rem 1rem; }
+        .crypto-addr-label { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-bottom: 0.3rem; }
+        .crypto-addr { font-size: 0.78rem; color: white; font-family: monospace; word-break: break-all; line-height: 1.5; }
+        .crypto-amount { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+        .crypto-amount span:first-child { font-size: 1.1rem; font-weight: 700; color: #f59e0b; }
+
+        .pay-confirm-btn {
+            width: 100%; padding: 1rem;
+            border: none; border-radius: 14px;
+            color: white; font-size: 1rem; font-weight: 700;
+            cursor: pointer; transition: all 0.3s;
+            font-family: inherit;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+        .pay-confirm-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(0,0,0,0.4); filter: brightness(1.1); }
+
+        /* Success */
+        .pay-success { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.5rem; padding: 1rem 0; }
+        .pay-success-ring {
+            width: 90px; height: 90px; border-radius: 50%;
+            background: linear-gradient(135deg, #4ade80, #06b6d4);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 50px rgba(74,222,128,0.4);
+            animation: successPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes successPop { from { transform: scale(0); } to { transform: scale(1); } }
+        .pay-success-icon { font-size: 2.5rem; color: white; font-weight: 900; }
+        .pay-success-title { font-size: 1.8rem; font-weight: 800; color: white; }
+        .pay-success-sub { font-size: 1rem; color: rgba(255,255,255,0.6); margin-top: -1rem; }
+        .pay-success-details { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; }
+        .pay-success-row { display: flex; justify-content: space-between; padding: 0.85rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.9rem; color: rgba(255,255,255,0.5); }
+        .pay-success-row:last-child { border-bottom: none; }
+
+        @media (max-width: 480px) {
+            .pay-methods-grid { grid-template-columns: repeat(2,1fr); }
+            .pay-modal { padding: 1.5rem; }
+        }
+
+        /* Validation errors */
+        .pay-field-error { font-size: 0.75rem; color: #f87171; margin-top: 0.4rem; display: none; }
+        .pay-input.invalid { border-color: #f87171 !important; background: rgba(248,113,113,0.06) !important; }
+        .pay-input.valid { border-color: #4ade80 !important; }
+        .cvv-help { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); font-size: 0.65rem; cursor: help; color: rgba(255,255,255,0.5); }
+        .pay-secure-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; font-size: 0.72rem; color: rgba(255,255,255,0.35); padding: 0.6rem 0; }
+        .pay-confirm-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none !important; }
+        .btn-processing { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Pending screen */
+        .pending-status-bar { display: flex; align-items: center; justify-content: center; width: 100%; gap: 0; margin: 0.5rem 0; }
+        .pending-step { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+        .ps-dot { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; }
+        .ps-dot.done { background: linear-gradient(135deg,#4ade80,#06b6d4); color: #0f172a; }
+        .ps-dot.pulse { background: linear-gradient(135deg,#f59e0b,#fb923c); color: #0f172a; animation: pulseGlow 1.5s infinite; }
+        .ps-dot.faded-dot { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.3); font-size: 0.9rem; }
+        @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.4)} 50%{box-shadow:0 0 0 8px rgba(245,158,11,0)} }
+        .ps-label { font-size: 0.68rem; color: rgba(255,255,255,0.5); text-align: center; line-height: 1.3; }
+        .pending-line { flex: 1; height: 2px; background: linear-gradient(90deg,#4ade80,#f59e0b); max-width: 50px; margin: 0 4px; margin-bottom: 20px; }
+        .pending-line.faded { background: rgba(255,255,255,0.1); }
+        .pending-info-card { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; }
+        .pic-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .pic-row:last-child { border-bottom: none; }
+        .pic-icon { font-size: 1.2rem; width: 28px; text-align: center; }
+        .pic-label { font-size: 0.72rem; color: rgba(255,255,255,0.4); }
+        .pic-value { font-size: 0.92rem; font-weight: 700; color: white; }
+        .pending-notice { width: 100%; padding: 1rem 1.2rem; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 14px; font-size: 0.83rem; color: rgba(255,255,255,0.7); line-height: 1.6; text-align: left; }
+        .pending-notice strong { color: #fbbf24; }
+    
+        footer { padding: 4rem 5%; background: rgba(0,0,0,0.3); border-top: 1px solid var(--glass-border); text-align: center; }
+        .footer-content { max-width: 1200px; margin: 0 auto; }
+        .social-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; }
+        .social-icon { width: 50px; height: 50px; border-radius: 50%; background: var(--glass); border: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: center; color: white; text-decoration: none; font-size: 1.2rem; transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .social-icon::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); transition: left 0.5s ease; }
+        .social-icon:hover::before { left: 100%; }
+        .social-icon:hover { transform: translateY(-5px) rotate(360deg); background: var(--primary); box-shadow: 0 10px 30px rgba(99,102,241,0.4); }
+        .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .footer-links a { color: rgba(255,255,255,0.7); text-decoration: none; transition: color 0.3s ease; }
+        .footer-links a:hover { color: var(--accent); }
+        .copyright { color: rgba(255,255,255,0.5); font-size: 0.9rem; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .stat-chip { display: none; }
+            .shop-grid { grid-template-columns: 1fr; gap: 3rem; }
+            .product-image-wrapper { max-width: 360px; }
+        }
+
+        @media (max-width: 768px) {
+            .timeline::before { left: 30px; }
+            .timeline-content { width: calc(100% - 80px); margin-left: 80px !important; text-align: left !important; }
+            .timeline-icon { left: 30px; transform: translate(-50%, -50%); }
+            .carousel-slide { height: 400px; }
+            .mirror-container { width: 250px; height: 400px; }
+            .nav-menu a { font-size: 1.5rem; }
+            .cart-sidebar { width: 100%; right: -100%; }
+            .guarantees { grid-template-columns: 1fr 1fr; }
+            .pricing-box { flex-direction: column; align-items: flex-start; }
+        }
+
+        .parallax-element { position: absolute; pointer-events: none; opacity: 0.1; font-size: 20rem; font-weight: 900; color: var(--primary); z-index: 0; }
+        .cursor-glow { width: 20px; height: 20px; background: var(--accent); border-radius: 50%; position: fixed; pointer-events: none; z-index: 9999; mix-blend-mode: screen; transition: transform 0.1s ease; box-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent); }
+        .cursor-trail { width: 40px; height: 40px; border: 2px solid var(--accent); border-radius: 50%; position: fixed; pointer-events: none; z-index: 9998; transition: all 0.2s ease; opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div class="aurora-bg">
+        <div class="aurora-blob blob-1"></div>
+        <div class="aurora-blob blob-2"></div>
+        <div class="aurora-blob blob-3"></div>
+    </div>
+    <div class="cursor-glow"></div>
+
+    <!-- Header -->
+    <header id="header">
+        <div class="logo" onclick="window.scrollTo(0,0)">
+            <img src="imagem.png" alt="Smart Mirror" style="height:40px; width:40px; border-radius:12px; object-fit:cover;">
+            <span>Smart Mirror</span>
+        </div>
+        <div class="header-right">
+            <div class="cart-btn-header" onclick="openCart()" title="Ver carrinho">
+                🛒
+                <span class="cart-count" id="cartCount">0</span>
+            </div>
+            <div class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-menu" id="navMenu">
+        <a href="#home" style="transition-delay: 0.1s">Início</a>
+        <a href="#features" style="transition-delay: 0.2s">Funcionalidades</a>
+        <a href="#showcase" style="transition-delay: 0.3s">Galeria</a>
+        <a href="#testimonials" style="transition-delay: 0.4s">Depoimentos</a>
+        <a href="#demo" style="transition-delay: 0.45s">Experimente</a>
+        <a href="#shop" style="transition-delay: 0.5s">Comprar</a>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero" id="home">
+        <div class="parallax-element" style="top: 10%; left: -10%;">✦</div>
+        <div class="parallax-element" style="bottom: 20%; right: -5%;">◉</div>
+        <div class="hero-content">
+            <div class="hero-badge">✨ O Futuro do Bem-Estar</div>
+            <h1>Conecte-se com o seu reflexo</h1>
+            <p>Mais do que um espelho, uma extensão da sua vida. Tecnologia de ponta que entende suas emoções, aprimora seu estilo e cuida da sua saúde mental.</p>
+            <div class="cta-buttons">
+                <a href="#shop" class="btn btn-primary"><span>Comprar Agora</span><span>→</span></a>
+                <a href="#features" class="btn btn-secondary"><span>Conhecer Funcionalidades</span></a>
+            </div>
+            <div class="mirror-container">
+                <div class="mirror-3d" id="mirror3d">
+                    <div class="mirror-frame">
+                        <div class="mirror-screen">
+                            <div class="emotion-indicator"></div>
+                            <div class="mirror-text">Detectando emoções...</div>
+                            <div class="mirror-widgets">
+                                <div class="widget">☀</div>
+                                <div class="widget">♥</div>
+                                <div class="widget">✓</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="section-header">
+            <h2>Funcionalidades Inteligentes</h2>
+            <p>Descubra como o Smart Mirror transforma sua rotina diária em uma experiência de bem-estar personalizada</p>
+        </div>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-icon">🎭</div>
+                <div class="timeline-content">
+                    <h3>Análise Emocional em Tempo Real</h3>
+                    <p>Reconhecimento facial avançado que detecta seu estado emocional através de micro-expressões. O espelho responde com iluminação terapêutica, mensagens motivacionais e sugestões personalizadas para melhorar seu humor.</p>
+                    <div class="feature-visual"><div class="emotion-waves"></div><span style="z-index: 2; font-size: 3rem;">😊</span></div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-icon">👔</div>
+                <div class="timeline-content">
+                    <h3>Assistente de Estilo Virtual</h3>
+                    <p>Experimente roupas virtualmente com nossa tecnologia de realidade aumentada. Receba recomendações baseadas no clima, ocasião e até mesmo no seu humor atual.</p>
+                    <div class="feature-visual" style="background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(99,102,241,0.3));"><span>👗</span></div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-icon">🧘</div>
+                <div class="timeline-content">
+                    <h3>Treinamento e Meditação</h3>
+                    <p>Sessões de ioga guiadas, exercícios de respiração e meditações personalizadas baseadas no seu nível de estresse detectado.</p>
+                    <div class="feature-visual" style="background: linear-gradient(135deg, rgba(6,182,212,0.3), rgba(139,92,246,0.3));"><span>🧘‍♀️</span></div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-icon">🏠</div>
+                <div class="timeline-content">
+                    <h3>Integração com o Ambiente</h3>
+                    <p>Conecte-se com dispositivos inteligentes da casa. Ajuste iluminação, temperatura e sons ambientais automaticamente baseado no seu estado emocional.</p>
+                    <div class="feature-visual" style="background: linear-gradient(135deg, rgba(234,179,8,0.3), rgba(239,68,68,0.3));"><span>🏡</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Showcase Carousel -->
+    <section class="showcase" id="showcase">
+        <div class="section-header">
+            <h2>Smart Mirror em Ação</h2>
+            <p>Explore diferentes cenários onde nossa tecnologia faz a diferença</p>
+        </div>
+        <div class="carousel-container">
+            <div class="carousel-track" id="carouselTrack">
+                <div class="carousel-slide">
+                    <img src="https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1200&h=800&fit=crop" alt="Quarto Moderno">
+                    <div class="carousel-content"><h3>Quarto Inteligente</h3><p>Comece seu dia com insights personalizados sobre sono, clima e agenda.</p></div>
+                </div>
+                <div class="carousel-slide">
+                    <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&h=800&fit=crop" alt="Academia">
+                    <div class="carousel-content"><h3>Seu Personal Trainer</h3><p>Correção de postura em tempo real durante exercícios com feedback visual imediato.</p></div>
+                </div>
+                <div class="carousel-slide">
+                    <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=1200&h=800&fit=crop" alt="Spa">
+                    <div class="carousel-content"><h3>Spa em Casa</h3><p>Sessões de relaxamento com terapia de luz cromática sincronizada com sua respiração.</p></div>
+                </div>
+            </div>
+            <button class="carousel-nav carousel-prev" onclick="moveCarousel(-1)">‹</button>
+            <button class="carousel-nav carousel-next" onclick="moveCarousel(1)">›</button>
+        </div>
+        <div class="carousel-dots">
+            <span class="dot active" onclick="goToSlide(0)"></span>
+            <span class="dot" onclick="goToSlide(1)"></span>
+            <span class="dot" onclick="goToSlide(2)"></span>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials" id="testimonials">
+        <div class="section-header">
+            <h2>Histórias de Transformação</h2>
+            <p>Veja como o Smart Mirror impactou a vida de nossos usuários</p>
+        </div>
+        <div class="testimonials-grid">
+            <div class="testimonial-card">
+                <div class="testimonial-header"><div class="avatar">AM</div><div class="testimonial-info"><h4>Ana Maria Silva</h4><span>Executiva de Marketing</span></div></div>
+                <p class="testimonial-text">"O Smart Mirror mudou completamente minha rotina matinal. As sugestões de estilo baseadas no meu humor me ajudam a começar o dia mais confiante."</p>
+                <div class="progress-chart"><div class="chart-bar" style="height:40%"></div><div class="chart-bar" style="height:55%"></div><div class="chart-bar" style="height:45%"></div><div class="chart-bar" style="height:70%"></div><div class="chart-bar" style="height:85%"></div><div class="chart-bar" style="height:90%"></div></div>
+                <small style="color:var(--accent);display:block;margin-top:.5rem">Evolução do bem-estar em 6 meses</small>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header"><div class="avatar" style="background:linear-gradient(135deg,#ec4899,#8b5cf6)">JC</div><div class="testimonial-info"><h4>João Carlos Mendes</h4><span>Desenvolvedor de Software</span></div></div>
+                <p class="testimonial-text">"As sessões de respiração guiadas quando detecta estresse alto são incríveis. Meu foco melhorou 200% desde que comecei a usar."</p>
+                <div class="progress-chart"><div class="chart-bar" style="height:30%;background:linear-gradient(180deg,#ec4899,#8b5cf6)"></div><div class="chart-bar" style="height:40%;background:linear-gradient(180deg,#ec4899,#8b5cf6)"></div><div class="chart-bar" style="height:60%;background:linear-gradient(180deg,#ec4899,#8b5cf6)"></div><div class="chart-bar" style="height:75%;background:linear-gradient(180deg,#ec4899,#8b5cf6)"></div><div class="chart-bar" style="height:88%;background:linear-gradient(180deg,#ec4899,#8b5cf6)"></div><div class="chart-bar" style="height:95%;background:linear-gradient(180deg,#ec4899,#8b5cf6)"></div></div>
+                <small style="color:var(--secondary);display:block;margin-top:.5rem">Níveis de produtividade e foco</small>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header"><div class="avatar" style="background:linear-gradient(135deg,#06b6d4,#3b82f6)">LF</div><div class="testimonial-info"><h4>Laura Ferreira</h4><span>Estudante de Medicina</span></div></div>
+                <p class="testimonial-text">"O Smart Mirror me ajuda a manter equilíbrio entre estudos e autocuidado. A integração com meus dispositivos criou um ambiente de estudo perfeito."</p>
+                <div class="progress-chart"><div class="chart-bar" style="height:35%;background:linear-gradient(180deg,#06b6d4,#3b82f6)"></div><div class="chart-bar" style="height:50%;background:linear-gradient(180deg,#06b6d4,#3b82f6)"></div><div class="chart-bar" style="height:65%;background:linear-gradient(180deg,#06b6d4,#3b82f6)"></div><div class="chart-bar" style="height:80%;background:linear-gradient(180deg,#06b6d4,#3b82f6)"></div><div class="chart-bar" style="height:85%;background:linear-gradient(180deg,#06b6d4,#3b82f6)"></div><div class="chart-bar" style="height:92%;background:linear-gradient(180deg,#06b6d4,#3b82f6)"></div></div>
+                <small style="color:var(--accent);display:block;margin-top:.5rem">Qualidade do sono e descanso</small>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo -->
+    <section class="demo-section" id="demo">
+        <div class="demo-container">
+            <div class="section-header">
+                <h2>Experimente a Tecnologia</h2>
+                <p>Simule como o Smart Mirror responde às diferentes emoções:</p>
+            </div>
+            <div class="mood-simulator">
+                <div class="mood-options">
+                    <button class="mood-btn" onclick="setMood('happy', event)" title="Feliz">😊</button>
+                    <button class="mood-btn" onclick="setMood('calm', event)" title="Calmo">😌</button>
+                    <button class="mood-btn" onclick="setMood('energetic', event)" title="Energético">⚡</button>
+                    <button class="mood-btn" onclick="setMood('focused', event)" title="Focado">🎯</button>
+                </div>
+                <div class="mirror-preview" id="mirrorPreview">
+                    <div class="emotion-indicator" style="width:80px;height:80px;margin-bottom:1rem"></div>
+                    <div class="mirror-response" id="mirrorResponse">Selecione uma emoção para ver a resposta do espelho...</div>
+                </div>
+                <div style="margin-top:2rem;padding:1.5rem;background:rgba(0,0,0,0.2);border-radius:15px">
+                    <h4 style="color:var(--accent);margin-bottom:.5rem">Resposta do Sistema:</h4>
+                    <p id="systemResponse" style="color:rgba(255,255,255,0.8)">Aguardando detecção emocional...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== SHOP SECTION ===================== -->
+    <section class="shop-section" id="shop">
+        <div class="section-header">
+            <h2>Adquira o Seu</h2>
+            <p>Transforme o seu espaço com o espelho inteligente mais avançado do mercado</p>
+        </div>
+
+        <div class="shop-grid">
+            <!-- Product Image -->
+            <div class="product-showcase">
+                <div class="product-image-wrapper">
+                    <div class="product-glow-ring"></div>
+                    <div class="product-image-card">
+                        <img
+                            src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&h=1100&fit=crop"
+                            alt="Smart Mirror"
+                            class="product-img"
+                            id="productMainImg"
+                        >
+                        <div class="product-badge-floating">✦ Novo 2024</div>
+                        <div class="product-rating-floating">
+                            <span class="stars">★★★★★</span>
+                            <span style="color:rgba(255,255,255,0.6);font-size:0.8rem">4.9 (238 avaliações)</span>
+                        </div>
+                    </div>
+
+                    <!-- Floating stat chips -->
+                    <div class="stat-chip stat-chip-1">
+                        <span class="chip-icon">🎭</span>
+                        <div>
+                            <div class="chip-label">Emoções detectadas</div>
+                            <div class="chip-value">27 micro-expressões</div>
+                        </div>
+                    </div>
+                    <div class="stat-chip stat-chip-2">
+                        <span class="chip-icon">📺</span>
+                        <div>
+                            <div class="chip-label">Ecrã OLED</div>
+                            <div class="chip-value">4K · 120Hz</div>
+                        </div>
+                    </div>
+                    <div class="stat-chip stat-chip-3">
+                        <span class="chip-icon">🔒</span>
+                        <div>
+                            <div class="chip-label">Privacidade</div>
+                            <div class="chip-value">100% local</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Info -->
+            <div class="product-info">
+                <div class="product-label">
+                    <span>🪞</span> Smart Mirror Pro
+                </div>
+
+                <div>
+                    <h2 class="product-title">Smart Mirror<br>Edition 2024</h2>
+                    <p class="product-subtitle">O espelho que te conhece melhor do que ninguém</p>
+                </div>
+
+                <div class="product-description">
+                    Espelho inteligente com IA emocional integrada, ecrã OLED 4K ultra-slim de 32", câmara de análise facial com processamento 100% local para máxima privacidade, integração com mais de 200 dispositivos de casa inteligente e suporte para voz em português.
+                </div>
+
+                <!-- Specs -->
+                <div class="specs-row">
+                    <span class="spec-pill">📐 32" OLED 4K</span>
+                    <span class="spec-pill">🎙️ Voz em PT</span>
+                    <span class="spec-pill">📶 Wi-Fi 6 + BT 5.3</span>
+                    <span class="spec-pill">🔒 IA Local</span>
+                    <span class="spec-pill">💡 Luz Adaptativa</span>
+                    <span class="spec-pill">🔧 Instalação inclusa</span>
+                </div>
+
+                <!-- Pricing -->
+                <div class="pricing-box">
+                    <div class="price-block">
+                        <div class="price-original">Antes: 999€</div>
+                        <div class="price-current">700€</div>
+                        <div class="price-note">IVA incluído · Entrega gratuita</div>
+                    </div>
+                    <div class="price-discount-badge">
+                        🎉 Poupa<br><strong>299€</strong>
+                    </div>
+                </div>
+
+                <!-- Quantity -->
+                <div class="quantity-row">
+                    <span class="qty-label">Quantidade:</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+                        <span class="qty-display" id="qtyDisplay">1</span>
+                        <button class="qty-btn" onclick="changeQty(1)">+</button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="btn-add-cart" onclick="addToCart()">
+                        🛒 Adicionar ao Carrinho
+                    </button>
+                    <button class="btn-wishlist" id="wishlistBtn" onclick="toggleWishlist(this)" title="Adicionar à lista de desejos">
+                        🤍
+                    </button>
+                </div>
+
+                <!-- Guarantees -->
+                <div class="guarantees">
+                    <div class="guarantee-item">
+                        <span class="guarantee-icon">↩️</span>
+                        <div class="guarantee-text">30 dias de devolução gratuita</div>
+                    </div>
+                    <div class="guarantee-item">
+                        <span class="guarantee-icon">🛡️</span>
+                        <div class="guarantee-text">2 anos de garantia</div>
+                    </div>
+                    <div class="guarantee-item">
+                        <span class="guarantee-icon">🚚</span>
+                        <div class="guarantee-text">Entrega e instalação grátis</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="social-links">
+                <a href="#" class="social-icon" aria-label="Instagram">📷</a>
+                <a href="#" class="social-icon" aria-label="Twitter">🐦</a>
+                <a href="#" class="social-icon" aria-label="LinkedIn">💼</a>
+                <a href="#" class="social-icon" aria-label="YouTube">▶</a>
+            </div>
+            <div class="footer-links">
+                <a href="#">Sobre Nós</a>
+                <a href="#">Tecnologia</a>
+                <a href="#">Suporte</a>
+                <a href="#">Política de Privacidade</a>
+                <a href="#">Termos de Uso</a>
+                <a href="#">Contato</a>
+            </div>
+            <p class="copyright">© 2024 Smart Mirror Technologies. Todos os direitos reservados.<br>Desenvolvido com 💜 e Inteligência Artificial</p>
+        </div>
+    </footer>
+
+    <!-- ===================== CART SIDEBAR ===================== -->
+    <div class="cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3>🛒 O Meu Carrinho</h3>
+            <button class="cart-close" onclick="closeCart()">✕</button>
+        </div>
+
+        <div class="cart-body" id="cartBody">
+            <div class="cart-empty" id="cartEmpty">
+                <div class="cart-empty-icon">🛒</div>
+                <p>O carrinho está vazio</p>
+            </div>
+            <div id="cartItems"></div>
+        </div>
+
+        <div class="cart-footer" id="cartFooter" style="display:none">
+            <div class="cart-subtotal">
+                <span class="cart-subtotal-label">Subtotal</span>
+                <span class="cart-subtotal-value" id="cartSubtotal">0€</span>
+            </div>
+            <div class="cart-subtotal">
+                <span class="cart-subtotal-label">Entrega</span>
+                <span class="cart-subtotal-value" style="color:#4ade80">Gratuita</span>
+            </div>
+            <div class="cart-divider"></div>
+            <div class="cart-total">
+                <span class="cart-total-label">Total</span>
+                <span class="cart-total-value" id="cartTotal">0€</span>
+            </div>
+            <button class="btn-checkout" onclick="openPayment()">Finalizar Compra →</button>
+            <div class="cart-secure-note">🔒 Pagamento 100% seguro e encriptado</div>
+        </div>
+    </div>
+
+    <!-- ===================== PAYMENT MODAL ===================== -->
+    <div class="pay-overlay" id="payOverlay" onclick="closePayment()"></div>
+    <div class="pay-modal" id="payModal">
+
+        <!-- Step 1: Choose method -->
+        <div class="pay-step" id="payStep1">
+            <div class="pay-modal-header">
+                <div>
+                    <div class="pay-modal-label">Pagamento seguro</div>
+                    <h3 class="pay-modal-title">Escolha o método</h3>
+                </div>
+                <button class="pay-close" onclick="closePayment()">✕</button>
+            </div>
+
+            <div class="pay-order-summary">
+                <span class="pay-order-label">Total a pagar</span>
+                <span class="pay-order-total" id="payTotalDisplay">700€</span>
+            </div>
+
+            <div class="pay-methods-grid">
+                <div class="pay-method" onclick="selectMethod('mbway')" data-method="mbway">
+                    <div class="pay-method-icon" style="background:linear-gradient(135deg,#e91e8c,#c2185b)">📱</div>
+                    <div class="pay-method-name">MB WAY</div>
+                    <div class="pay-method-desc">Instantâneo</div>
+                </div>
+                <div class="pay-method" onclick="selectMethod('multibanco')" data-method="multibanco">
+                    <div class="pay-method-icon" style="background:linear-gradient(135deg,#1565c0,#0d47a1)">🏧</div>
+                    <div class="pay-method-name">Multibanco</div>
+                    <div class="pay-method-desc">Referência ATM</div>
+                </div>
+                <div class="pay-method" onclick="selectMethod('card')" data-method="card">
+                    <div class="pay-method-icon" style="background:linear-gradient(135deg,#6366f1,#4338ca)">💳</div>
+                    <div class="pay-method-name">Cartão</div>
+                    <div class="pay-method-desc">Visa · Mastercard</div>
+                </div>
+                <div class="pay-method" onclick="selectMethod('paypal')" data-method="paypal">
+                    <div class="pay-method-icon" style="background:linear-gradient(135deg,#0070ba,#003087)">🅿️</div>
+                    <div class="pay-method-name">PayPal</div>
+                    <div class="pay-method-desc">Conta ou cartão</div>
+                </div>
+                <div class="pay-method" onclick="selectMethod('transfer')" data-method="transfer">
+                    <div class="pay-method-icon" style="background:linear-gradient(135deg,#06b6d4,#0284c7)">🏦</div>
+                    <div class="pay-method-name">Transferência</div>
+                    <div class="pay-method-desc">Bancária SEPA</div>
+                </div>
+                <div class="pay-method" onclick="selectMethod('crypto')" data-method="crypto">
+                    <div class="pay-method-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">₿</div>
+                    <div class="pay-method-name">Cripto</div>
+                    <div class="pay-method-desc">BTC · ETH · USDT</div>
+                </div>
+            </div>
+
+            <div class="pay-secure-badges">
+                <span>🔒 SSL 256-bit</span>
+                <span>✓ PCI DSS</span>
+                <span>🛡️ 3D Secure</span>
+            </div>
+        </div>
+
+        <!-- Step 2: Method details -->
+        <div class="pay-step" id="payStep2" style="display:none">
+            <div class="pay-modal-header">
+                <button class="pay-back" onclick="goBackPayment()">← Voltar</button>
+                <button class="pay-close" onclick="closePayment()">✕</button>
+            </div>
+
+            <!-- MB WAY -->
+            <div class="pay-detail" id="detail-mbway" style="display:none">
+                <div class="pay-detail-icon" style="background:linear-gradient(135deg,#e91e8c,#c2185b)">📱</div>
+                <h3 class="pay-detail-title">MB WAY</h3>
+                <p class="pay-detail-sub">Introduza o seu número de telemóvel</p>
+                <div class="pay-input-group">
+                    <label>Telemóvel</label>
+                    <div class="pay-input-prefix-wrap">
+                        <span class="pay-prefix">🇵🇹 +351</span>
+                        <input type="tel" class="pay-input" placeholder="9XX XXX XXX" maxlength="9" id="mbwayPhone" oninput="this.value=this.value.replace(/\D/g,'')">
+                    </div>
+                    <div class="pay-field-error" id="err-mbway">⚠ Introduza um número válido (9 dígitos)</div>
+                </div>
+                <div class="pay-info-box">💡 Após confirmar, receberá uma notificação <strong>imediata</strong> na app MB WAY para autorizar o pagamento de <span id="mbwayTotal2"></span>.</div>
+                <button class="pay-confirm-btn" style="background:linear-gradient(135deg,#e91e8c,#c2185b)" onclick="submitMbway()">Enviar Pedido MB WAY →</button>
+            </div>
+
+            <!-- Multibanco -->
+            <div class="pay-detail" id="detail-multibanco" style="display:none">
+                <div class="pay-detail-icon" style="background:linear-gradient(135deg,#1565c0,#0d47a1)">🏧</div>
+                <h3 class="pay-detail-title">Multibanco</h3>
+                <p class="pay-detail-sub">Use estes dados no ATM ou homebanking</p>
+                <div class="mb-ref-box">
+                    <div class="mb-ref-row">
+                        <span class="mb-ref-label">Entidade</span>
+                        <span class="mb-ref-value" id="mbEntidade">21374</span>
+                        <button class="copy-btn" onclick="copyText('21374')">📋</button>
+                    </div>
+                    <div class="mb-ref-row">
+                        <span class="mb-ref-label">Referência</span>
+                        <span class="mb-ref-value" id="mbRef">937 482 016</span>
+                        <button class="copy-btn" onclick="copyText('937482016')">📋</button>
+                    </div>
+                    <div class="mb-ref-row">
+                        <span class="mb-ref-label">Valor</span>
+                        <span class="mb-ref-value" id="mbValor" style="color:#4ade80;font-weight:800">700,00€</span>
+                        <button class="copy-btn" onclick="copyText('700.00')">📋</button>
+                    </div>
+                </div>
+                <div class="pay-info-box">⏱️ Referência válida por <strong>72 horas</strong>. O pedido entra em processamento automaticamente assim que o pagamento for detetado pelo sistema bancário.</div>
+                <button class="pay-confirm-btn" style="background:linear-gradient(135deg,#1565c0,#0d47a1)" onclick="confirmPayment('multibanco')">Já Paguei — Confirmar ✓</button>
+            </div>
+
+            <!-- Card -->
+            <div class="pay-detail" id="detail-card" style="display:none">
+                <div class="pay-detail-icon" style="background:linear-gradient(135deg,#6366f1,#4338ca)">💳</div>
+                <h3 class="pay-detail-title">Cartão de Crédito/Débito</h3>
+                <p class="pay-detail-sub">Os seus dados estão protegidos com encriptação SSL</p>
+                <div class="pay-input-group">
+                    <label>Número do Cartão</label>
+                    <input type="text" class="pay-input" placeholder="1234 5678 9012 3456" maxlength="19" id="cardNumber" oninput="formatCard(this)">
+                    <div class="card-brands">
+                        <span class="card-brand" id="cb-visa">VISA</span>
+                        <span class="card-brand" id="cb-mc">MC</span>
+                        <span class="card-brand" id="cb-amex">AMEX</span>
+                    </div>
+                    <div class="pay-field-error" id="err-cardnum">⚠ Número do cartão incompleto (16 dígitos)</div>
+                </div>
+                <div class="pay-input-row">
+                    <div class="pay-input-group">
+                        <label>Validade</label>
+                        <input type="text" class="pay-input" placeholder="MM/AA" maxlength="5" id="cardExpiry" oninput="formatExpiry(this)">
+                        <div class="pay-field-error" id="err-expiry">⚠ Validade inválida</div>
+                    </div>
+                    <div class="pay-input-group">
+                        <label>CVV <span class="cvv-help" title="3 dígitos no verso do cartão">?</span></label>
+                        <input type="password" class="pay-input" placeholder="•••" maxlength="4" id="cardCvv" oninput="this.value=this.value.replace(/\D/g,'')">
+                        <div class="pay-field-error" id="err-cvv">⚠ CVV obrigatório</div>
+                    </div>
+                </div>
+                <div class="pay-input-group">
+                    <label>Nome no Cartão</label>
+                    <input type="text" class="pay-input" placeholder="NOME SOBRENOME" id="cardName" oninput="this.value=this.value.toUpperCase()">
+                    <div class="pay-field-error" id="err-name">⚠ Nome obrigatório</div>
+                </div>
+                <div class="pay-secure-row">
+                    <span>🔒 Pagamento encriptado</span>
+                    <span>🛡️ 3D Secure ativo</span>
+                    <span>✓ PCI DSS</span>
+                </div>
+                <button class="pay-confirm-btn" style="background:linear-gradient(135deg,#6366f1,#ec4899)" id="cardPayBtn" onclick="submitCard()">Pagar <span id="cardTotal"></span> →</button>
+            </div>
+
+            <!-- PayPal -->
+            <div class="pay-detail" id="detail-paypal" style="display:none">
+                <div class="pay-detail-icon" style="background:linear-gradient(135deg,#0070ba,#003087)">🅿️</div>
+                <h3 class="pay-detail-title">PayPal</h3>
+                <p class="pay-detail-sub">Pague com a sua conta PayPal</p>
+                <div class="pay-input-group">
+                    <label>Email PayPal</label>
+                    <input type="email" class="pay-input" placeholder="email@exemplo.com" id="paypalEmail">
+                    <div class="pay-field-error" id="err-ppEmail">⚠ Introduza um email válido</div>
+                </div>
+                <div class="pay-input-group">
+                    <label>Palavra-passe</label>
+                    <input type="password" class="pay-input" placeholder="••••••••" id="paypalPass">
+                    <div class="pay-field-error" id="err-ppPass">⚠ Palavra-passe obrigatória</div>
+                </div>
+                <div class="pay-info-box">🔐 As suas credenciais são transmitidas de forma encriptada. Nunca as armazenamos.</div>
+                <button class="pay-confirm-btn" style="background:linear-gradient(135deg,#0070ba,#003087)" onclick="submitPaypal()">Continuar com PayPal →</button>
+            </div>
+
+            <!-- Transfer -->
+            <div class="pay-detail" id="detail-transfer" style="display:none">
+                <div class="pay-detail-icon" style="background:linear-gradient(135deg,#06b6d4,#0284c7)">🏦</div>
+                <h3 class="pay-detail-title">Transferência Bancária</h3>
+                <p class="pay-detail-sub">Dados para transferência SEPA</p>
+                <div class="mb-ref-box">
+                    <div class="mb-ref-row">
+                        <span class="mb-ref-label">IBAN</span>
+                        <span class="mb-ref-value" style="font-size:0.85rem">PT50 0010 0000 2943 1019 1</span>
+                        <button class="copy-btn" onclick="copyText('PT50001000002943101911')">📋</button>
+                    </div>
+                    <div class="mb-ref-row">
+                        <span class="mb-ref-label">BIC/SWIFT</span>
+                        <span class="mb-ref-value">BPIOPTPL</span>
+                        <button class="copy-btn" onclick="copyText('BPIOPTPL')">📋</button>
+                    </div>
+                    <div class="mb-ref-row">
+                        <span class="mb-ref-label">Referência</span>
+                        <span class="mb-ref-value">SM2024-<span id="transferRef">00847</span></span>
+                        <button class="copy-btn" onclick="copyText('SM2024-00847')">📋</button>
+                    </div>
+                    <div class="mb-ref-row">
+                        <span class="mb-ref-label">Valor</span>
+                        <span class="mb-ref-value" style="color:#4ade80;font-weight:800" id="transferValor">700,00€</span>
+                    </div>
+                </div>
+                <div class="pay-info-box">📧 Após a transferência, envie o comprovativo para <strong>pagamentos@smartmirror.pt</strong> com a referência do pedido. Processamento em 1-2 dias úteis.</div>
+                <button class="pay-confirm-btn" style="background:linear-gradient(135deg,#06b6d4,#0284c7)" onclick="confirmPayment('transfer')">Confirmar — Já Transferi ✓</button>
+            </div>
+
+            <!-- Crypto -->
+            <div class="pay-detail" id="detail-crypto" style="display:none">
+                <div class="pay-detail-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">₿</div>
+                <h3 class="pay-detail-title">Criptomoeda</h3>
+                <p class="pay-detail-sub">Escolha a moeda</p>
+                <div class="crypto-options">
+                    <div class="crypto-opt active" onclick="selectCrypto(this,'BTC')">
+                        <span>₿</span> Bitcoin
+                    </div>
+                    <div class="crypto-opt" onclick="selectCrypto(this,'ETH')">
+                        <span>Ξ</span> Ethereum
+                    </div>
+                    <div class="crypto-opt" onclick="selectCrypto(this,'USDT')">
+                        <span>₮</span> USDT
+                    </div>
+                    <div class="crypto-opt" onclick="selectCrypto(this,'SOL')">
+                        <span>◎</span> Solana
+                    </div>
+                </div>
+                <div class="qr-wrapper">
+                    <div class="qr-placeholder">
+                        <div class="qr-grid" id="qrGrid"></div>
+                    </div>
+                    <div class="crypto-addr-box">
+                        <div class="crypto-addr-label" id="cryptoCoinLabel">Endereço BTC</div>
+                        <div class="crypto-addr" id="cryptoAddr">bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</div>
+                        <button class="copy-btn" style="margin-top:0.4rem;width:100%;justify-content:center" onclick="copyText(document.getElementById('cryptoAddr').textContent)">📋 Copiar Endereço</button>
+                    </div>
+                    <div class="crypto-amount">
+                        <span id="cryptoAmountLabel">≈ 0.0094 BTC</span>
+                        <span style="color:rgba(255,255,255,0.4);font-size:0.75rem">ao câmbio atual</span>
+                    </div>
+                </div>
+                <div class="pay-info-box">⏱️ O pedido entra em processamento após <strong>1 confirmação na blockchain</strong>. Pode demorar entre 10 a 60 minutos dependendo da rede.</div>
+                <button class="pay-confirm-btn" style="background:linear-gradient(135deg,#f59e0b,#d97706)" onclick="confirmPayment('crypto')">Já Enviei — Aguardar Confirmação ✓</button>
+            </div>
+        </div>
+
+        <!-- Step 3a: Instant confirmed (card / mbway / paypal) -->
+        <div class="pay-step" id="payStep3" style="display:none">
+            <div class="pay-success">
+                <div class="pay-success-ring">
+                    <div class="pay-success-icon">✓</div>
+                </div>
+                <h3 class="pay-success-title">Pagamento Aprovado!</h3>
+                <p class="pay-success-sub">O teu Smart Mirror está em preparação 🚀</p>
+                <div class="pay-success-details">
+                    <div class="pay-success-row"><span>Pedido</span><span style="color:white;font-weight:700">#SM-<span id="orderNum"></span></span></div>
+                    <div class="pay-success-row"><span>Método</span><span id="payMethodLabel" style="color:white;font-weight:700"></span></div>
+                    <div class="pay-success-row"><span>Total pago</span><span style="color:#4ade80;font-weight:800" id="paySuccessTotal"></span></div>
+                    <div class="pay-success-row"><span>Estado</span><span style="color:#4ade80;font-weight:700">✓ Aprovado</span></div>
+                    <div class="pay-success-row"><span>Entrega estimada</span><span style="color:white;font-weight:700">3–5 dias úteis</span></div>
+                </div>
+                <p style="font-size:0.82rem;color:rgba(255,255,255,0.45);text-align:center;line-height:1.6">Receberás um email de confirmação com o número de seguimento assim que o pedido for expedido.</p>
+                <button class="pay-confirm-btn" style="background:linear-gradient(135deg,#4ade80,#06b6d4);color:#0f172a;font-weight:800" onclick="closePayment()">Perfeito, obrigado! ✓</button>
+            </div>
+        </div>
+
+        <!-- Step 3b: Pending verification (multibanco / transfer / crypto) -->
+        <div class="pay-step" id="payStep3b" style="display:none">
+            <div class="pay-success">
+                <div class="pay-success-ring" style="background:linear-gradient(135deg,#f59e0b,#fb923c);box-shadow:0 0 50px rgba(245,158,11,0.4)">
+                    <div class="pay-success-icon" style="font-size:2rem">⏳</div>
+                </div>
+                <h3 class="pay-success-title" style="font-size:1.5rem">A Verificar Pagamento</h3>
+                <p class="pay-success-sub">O seu pedido está registado e aguarda confirmação</p>
+
+                <div class="pending-status-bar">
+                    <div class="pending-step active">
+                        <div class="ps-dot done">✓</div>
+                        <div class="ps-label">Pedido<br>registado</div>
+                    </div>
+                    <div class="pending-line"></div>
+                    <div class="pending-step active-pulse">
+                        <div class="ps-dot pulse">⏳</div>
+                        <div class="ps-label">A verificar<br>pagamento</div>
+                    </div>
+                    <div class="pending-line faded"></div>
+                    <div class="pending-step">
+                        <div class="ps-dot faded-dot">📦</div>
+                        <div class="ps-label">Pedido<br>enviado</div>
+                    </div>
+                </div>
+
+                <div class="pending-info-card">
+                    <div class="pic-row">
+                        <span class="pic-icon">📋</span>
+                        <div>
+                            <div class="pic-label">Número de pedido</div>
+                            <div class="pic-value">#SM-<span id="pendingOrderNum"></span></div>
+                        </div>
+                    </div>
+                    <div class="pic-row">
+                        <span class="pic-icon">💰</span>
+                        <div>
+                            <div class="pic-label">Valor a verificar</div>
+                            <div class="pic-value" id="pendingTotal" style="color:#4ade80"></div>
+                        </div>
+                    </div>
+                    <div class="pic-row">
+                        <span class="pic-icon">⚙️</span>
+                        <div>
+                            <div class="pic-label">Método</div>
+                            <div class="pic-value" id="pendingMethod"></div>
+                        </div>
+                    </div>
+                    <div class="pic-row">
+                        <span class="pic-icon">🚚</span>
+                        <div>
+                            <div class="pic-label">Envio após confirmação</div>
+                            <div class="pic-value">3–5 dias úteis</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pending-notice">
+                    <strong>O que acontece a seguir?</strong><br>
+                    Quando o recebimento for acusado no nosso sistema, o seu pedido será automaticamente processado e enviado. Receberá um email de confirmação com o número de seguimento.
+                </div>
+
+                <button class="pay-confirm-btn" style="background:linear-gradient(135deg,#f59e0b,#fb923c);color:#0f172a;font-weight:800" onclick="closePayment()">Entendido ✓</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-notification" id="toastNotif">
+        ✓ Adicionado ao carrinho!
+    </div>
+
+    <script>
+        // ---- State ----
+        let cartItems = [];
+        let currentQty = 1;
+        const UNIT_PRICE = 700;
+
+        // ---- Menu ----
+        const menuToggle = document.getElementById('menuToggle');
+        const navMenu = document.getElementById('navMenu');
+        menuToggle.addEventListener('click', () => { menuToggle.classList.toggle('active'); navMenu.classList.toggle('active'); });
+        document.querySelectorAll('.nav-menu a').forEach(link => { link.addEventListener('click', () => { menuToggle.classList.remove('active'); navMenu.classList.remove('active'); }); });
+
+        // ---- Cursor ----
+        const cursorGlow = document.querySelector('.cursor-glow');
+        const cursorTrail = document.querySelector('.cursor-trail');
+        document.addEventListener('mousemove', (e) => {
+            cursorGlow.style.left = e.clientX - 10 + 'px';
+            cursorGlow.style.top = e.clientY - 10 + 'px';
+            setTimeout(() => { cursorTrail.style.left = e.clientX - 20 + 'px'; cursorTrail.style.top = e.clientY - 20 + 'px'; }, 100);
+        });
+        if (window.matchMedia("(max-width: 768px)").matches) { cursorGlow.style.display = 'none'; cursorTrail.style.display = 'none'; }
+
+        // ---- Timeline observer ----
+        const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); }); }, { threshold: 0.2, rootMargin: "0px 0px -50px 0px" });
+        document.querySelectorAll('.timeline-item').forEach(item => observer.observe(item));
+
+        // ---- Parallax ----
+        document.addEventListener('mousemove', (e) => {
+            document.querySelectorAll('.parallax-element').forEach((el, index) => {
+                const speed = (index + 1) * 20;
+                const x = (window.innerWidth / 2 - e.clientX) / speed;
+                const y = (window.innerHeight / 2 - e.clientY) / speed;
+                el.style.transform = `translate(${x}px, ${y}px)`;
+            });
+        });
+
+        // ---- Carousel ----
+        let currentSlide = 0;
+        const totalSlides = document.querySelectorAll('.carousel-slide').length;
+        const track = document.getElementById('carouselTrack');
+        const dots = document.querySelectorAll('.dot');
+        function updateCarousel() { track.style.transform = `translateX(-${currentSlide * 100}%)`; dots.forEach((d, i) => d.classList.toggle('active', i === currentSlide)); }
+        function moveCarousel(dir) { currentSlide = (currentSlide + dir + totalSlides) % totalSlides; updateCarousel(); }
+        function goToSlide(i) { currentSlide = i; updateCarousel(); }
+        setInterval(() => moveCarousel(1), 5000);
+
+        // ---- Mood Demo ----
+        const moodResponses = {
+            happy: { class: 'happy', text: 'Que ótimo humor! Vamos escolher um look vibrante! 🌟', system: 'Sistema: Detectando alta valência emocional. Ativando iluminação quente (2700K), sugerindo playlist upbeat, selecionando roupas com cores vibrantes.' },
+            calm: { class: 'calm', text: 'Momento de paz detectado. Perfeito para meditação. 🧘‍♀️', system: 'Sistema: Níveis de arousal baixos — estado ideal para mindfulness. Ativando luz azul relaxante, sons da natureza.' },
+            energetic: { class: 'energetic', text: 'Energia alta detectada! Que tal exercícios rápidos? 💪', system: 'Sistema: Alta ativação detectada. Ajustando iluminação branca fria (5000K). Sugerindo rotina de exercícios de 15 minutos.' },
+            focused: { class: 'focused', text: 'Modo foco ativado. Ambiente otimizado! 🎯', system: 'Sistema: Estado de flow detectado. Desativando notificações não-essenciais, ajustando iluminação para reduzir fadiga ocular (4000K).' }
+        };
+
+        function setMood(mood, event) {
+            const preview = document.getElementById('mirrorPreview');
+            const response = document.getElementById('mirrorResponse');
+            const system = document.getElementById('systemResponse');
+            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+            if (event) event.target.classList.add('active');
+            preview.className = 'mirror-preview ' + moodResponses[mood].class;
+            response.textContent = moodResponses[mood].text;
+            system.textContent = moodResponses[mood].system;
+            preview.style.transform = 'scale(0.95)';
+            setTimeout(() => { preview.style.transform = 'scale(1)'; }, 200);
+        }
+
+        // ---- Header scroll ----
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('header');
+            const s = window.pageYOffset;
+            header.style.background = s > 100 ? 'rgba(15,23,42,0.95)' : 'rgba(15,23,42,0.8)';
+            header.style.padding = s > 100 ? '1rem 5%' : '1.5rem 5%';
+        });
+
+        // ---- 3D Mirror ----
+        const mirror3d = document.getElementById('mirror3d');
+        document.addEventListener('mousemove', (e) => {
+            if (window.innerWidth > 768) { mirror3d.style.transform = `rotateY(${(window.innerWidth/2-e.pageX)/25}deg) rotateX(${(window.innerHeight/2-e.pageY)/25}deg)`; }
+        });
+
+        // ---- Quantity ----
+        function changeQty(delta) {
+            currentQty = Math.max(1, Math.min(10, currentQty + delta));
+            document.getElementById('qtyDisplay').textContent = currentQty;
+        }
+
+        // ---- Wishlist ----
+        function toggleWishlist(btn) {
+            btn.classList.toggle('active');
+            btn.textContent = btn.classList.contains('active') ? '❤️' : '🤍';
+        }
+
+        // ---- Cart Logic ----
+        function addToCart() {
+            const existing = cartItems.find(i => i.id === 'smart-mirror-pro');
+            if (existing) {
+                existing.qty += currentQty;
+            } else {
+                cartItems.push({
+                    id: 'smart-mirror-pro',
+                    name: 'Smart Mirror Edition 2024',
+                    variant: 'Preto Espacial · 32" OLED',
+                    price: UNIT_PRICE,
+                    qty: currentQty,
+                    img: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=160&h=160&fit=crop'
+                });
+            }
+            updateCartUI();
+            showToast(`${currentQty}x adicionado ao carrinho!`);
+            // Bounce count badge
+            const badge = document.getElementById('cartCount');
+            badge.classList.add('visible');
+            badge.style.transform = 'scale(1.5)';
+            setTimeout(() => { badge.style.transform = 'scale(1)'; }, 300);
+        }
+
+        function updateCartUI() {
+            const totalQty = cartItems.reduce((s, i) => s + i.qty, 0);
+            const totalPrice = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+
+            // Badge
+            const badge = document.getElementById('cartCount');
+            badge.textContent = totalQty;
+            badge.classList.toggle('visible', totalQty > 0);
+
+            // Empty state
+            document.getElementById('cartEmpty').style.display = totalQty === 0 ? 'flex' : 'none';
+            document.getElementById('cartFooter').style.display = totalQty === 0 ? 'none' : 'block';
+
+            // Items
+            const container = document.getElementById('cartItems');
+            container.innerHTML = cartItems.map(item => `
+                <div class="cart-item">
+                    <div class="cart-item-img"><img src="${item.img}" alt="${item.name}"></div>
+                    <div class="cart-item-details">
+                        <div class="cart-item-name">${item.name}</div>
+                        <div class="cart-item-variant">${item.variant}</div>
+                        <div class="cart-item-row">
+                            <div class="cart-item-qty">
+                                <button class="cqty-btn" onclick="changeCartQty('${item.id}', -1)">−</button>
+                                <span class="cqty-val">${item.qty}</span>
+                                <button class="cqty-btn" onclick="changeCartQty('${item.id}', 1)">+</button>
+                            </div>
+                            <span class="cart-item-price">${(item.price * item.qty).toLocaleString('pt-PT')}€</span>
+                        </div>
+                    </div>
+                    <button class="cart-item-remove" onclick="removeFromCart('${item.id}')" title="Remover">🗑</button>
+                </div>
+            `).join('');
+
+            // Totals
+            document.getElementById('cartSubtotal').textContent = totalPrice.toLocaleString('pt-PT') + '€';
+            document.getElementById('cartTotal').textContent = totalPrice.toLocaleString('pt-PT') + '€';
+        }
+
+        function changeCartQty(id, delta) {
+            const item = cartItems.find(i => i.id === id);
+            if (!item) return;
+            item.qty = Math.max(1, item.qty + delta);
+            updateCartUI();
+        }
+
+        function removeFromCart(id) {
+            cartItems = cartItems.filter(i => i.id !== id);
+            updateCartUI();
+        }
+
+        function openCart() {
+            document.getElementById('cartSidebar').classList.add('open');
+            document.getElementById('cartOverlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCart() {
+            document.getElementById('cartSidebar').classList.remove('open');
+            document.getElementById('cartOverlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        // ---- Toast ----
+        function showToast(msg) {
+            const toast = document.getElementById('toastNotif');
+            toast.textContent = '✓ ' + msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2800);
+        }
+
+        // ---- Payment Modal ----
+        const cryptoData = {
+            BTC:  { addr: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', amount: '≈ 0.0094 BTC' },
+            ETH:  { addr: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F', amount: '≈ 0.287 ETH' },
+            USDT: { addr: 'TEKsLNmxNTTXQSTHyxQlFdFQ1LQvJGMuWS',       amount: '≈ 700 USDT' },
+            SOL:  { addr: 'BYqMYHmnPk1bMJjfGVHjLqBqsBBdZzg1rVx4xXkSy3kj', amount: '≈ 5.32 SOL' }
+        };
+        const methodNames = { mbway:'MB WAY', multibanco:'Multibanco', card:'Cartão', paypal:'PayPal', transfer:'Transferência Bancária', crypto:'Criptomoeda' };
+        // Methods that need pending screen
+        const pendingMethods = ['multibanco','transfer','crypto'];
+
+        function openPayment() {
+            const total = cartItems.reduce((s,i) => s+i.price*i.qty, 0);
+            if (total === 0) return;
+            const fmt = total.toLocaleString('pt-PT') + '€';
+            document.getElementById('payTotalDisplay').textContent = fmt;
+            document.getElementById('mbwayTotal2').textContent = fmt;
+            document.getElementById('cardTotal').textContent = fmt;
+            document.getElementById('mbValor').textContent = fmt;
+            document.getElementById('transferValor').textContent = fmt;
+            ['payStep1','payStep2','payStep3','payStep3b'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            document.getElementById('payStep1').style.display = 'block';
+            document.getElementById('payOverlay').classList.add('open');
+            document.getElementById('payModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            document.getElementById('cartSidebar').classList.remove('open');
+            document.getElementById('cartOverlay').classList.remove('open');
+            // reset all inputs + errors
+            document.querySelectorAll('.pay-input').forEach(i => { i.value=''; i.classList.remove('invalid','valid'); });
+            document.querySelectorAll('.pay-field-error').forEach(e => e.style.display='none');
+        }
+
+        function closePayment() {
+            document.getElementById('payOverlay').classList.remove('open');
+            document.getElementById('payModal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function selectMethod(method) {
+            document.querySelectorAll('.pay-method').forEach(m => m.classList.remove('selected'));
+            document.querySelector(`[data-method="${method}"]`).classList.add('selected');
+            setTimeout(() => {
+                document.getElementById('payStep1').style.display = 'none';
+                document.getElementById('payStep2').style.display = 'block';
+                document.querySelectorAll('.pay-detail').forEach(d => d.style.display = 'none');
+                document.getElementById('detail-' + method).style.display = 'flex';
+                if (method === 'crypto') generateQR();
+            }, 150);
+        }
+
+        function goBackPayment() {
+            document.getElementById('payStep2').style.display = 'none';
+            document.getElementById('payStep1').style.display = 'block';
+        }
+
+        // ---- Field helpers ----
+        function showErr(id, show) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = show ? 'block' : 'none';
+        }
+        function markInput(el, valid) {
+            el.classList.toggle('invalid', !valid);
+            el.classList.toggle('valid', valid);
+        }
+
+        // ---- Submit: MB WAY ----
+        function submitMbway() {
+            const phone = document.getElementById('mbwayPhone').value.replace(/\D/g,'');
+            const ok = /^9[1236]\d{7}$/.test(phone);
+            markInput(document.getElementById('mbwayPhone'), ok);
+            showErr('err-mbway', !ok);
+            if (!ok) return;
+            // Show processing then instant success
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-processing"><span class="spinner"></span> A enviar notificação…</span>';
+            setTimeout(() => confirmPayment('mbway'), 2200);
+        }
+
+        // ---- Submit: Card ----
+        function submitCard() {
+            const numRaw = document.getElementById('cardNumber').value.replace(/\s/g,'');
+            const expiry = document.getElementById('cardExpiry').value;
+            const cvv = document.getElementById('cardCvv').value;
+            const name = document.getElementById('cardName').value.trim();
+
+            const numOk = /^\d{16}$/.test(numRaw);
+            const expiryOk = /^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry) && (() => {
+                const [m,y] = expiry.split('/'); const now = new Date();
+                return (parseInt('20'+y)*12 + parseInt(m)) >= (now.getFullYear()*12 + now.getMonth()+1);
+            })();
+            const cvvOk = /^\d{3,4}$/.test(cvv);
+            const nameOk = name.length >= 3;
+
+            markInput(document.getElementById('cardNumber'), numOk);
+            markInput(document.getElementById('cardExpiry'), expiryOk);
+            markInput(document.getElementById('cardCvv'), cvvOk);
+            markInput(document.getElementById('cardName'), nameOk);
+            showErr('err-cardnum', !numOk);
+            showErr('err-expiry', !expiryOk);
+            showErr('err-cvv', !cvvOk);
+            showErr('err-name', !nameOk);
+
+            if (!numOk || !expiryOk || !cvvOk || !nameOk) return;
+
+            const btn = document.getElementById('cardPayBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-processing"><span class="spinner"></span> A processar pagamento…</span>';
+            setTimeout(() => {
+                btn.innerHTML = '<span class="btn-processing"><span class="spinner"></span> A verificar com o banco…</span>';
+                setTimeout(() => confirmPayment('card'), 1800);
+            }, 1500);
+        }
+
+        // ---- Submit: PayPal ----
+        function submitPaypal() {
+            const email = document.getElementById('paypalEmail').value.trim();
+            const pass = document.getElementById('paypalPass').value;
+            const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            const passOk = pass.length >= 6;
+            markInput(document.getElementById('paypalEmail'), emailOk);
+            markInput(document.getElementById('paypalPass'), passOk);
+            showErr('err-ppEmail', !emailOk);
+            showErr('err-ppPass', !passOk);
+            if (!emailOk || !passOk) return;
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-processing"><span class="spinner"></span> A autenticar no PayPal…</span>';
+            setTimeout(() => {
+                btn.innerHTML = '<span class="btn-processing"><span class="spinner"></span> A confirmar pagamento…</span>';
+                setTimeout(() => confirmPayment('paypal'), 1800);
+            }, 1500);
+        }
+
+        // ---- Confirm (final step) ----
+        function confirmPayment(method) {
+            const total = cartItems.reduce((s,i) => s+i.price*i.qty, 0);
+            const fmt = total.toLocaleString('pt-PT') + '€';
+            const orderNum = Math.floor(10000 + Math.random() * 90000);
+
+            document.getElementById('payStep2').style.display = 'none';
+
+            if (pendingMethods.includes(method)) {
+                // Pending verification screen
+                document.getElementById('payStep3b').style.display = 'block';
+                document.getElementById('pendingOrderNum').textContent = orderNum;
+                document.getElementById('pendingTotal').textContent = fmt;
+                document.getElementById('pendingMethod').textContent = methodNames[method];
+            } else {
+                // Instant confirmed screen
+                document.getElementById('payStep3').style.display = 'block';
+                document.getElementById('orderNum').textContent = orderNum;
+                document.getElementById('payMethodLabel').textContent = methodNames[method];
+                document.getElementById('paySuccessTotal').textContent = fmt;
+            }
+            // Clear cart
+            cartItems = [];
+            updateCartUI();
+        }
+
+        function copyText(txt) {
+            navigator.clipboard.writeText(txt).then(() => showToast('Copiado!')).catch(() => showToast('Copiado!'));
+        }
+
+        function formatCard(input) {
+            let v = input.value.replace(/\D/g,'').substring(0,16);
+            input.value = v.replace(/(.{4})/g,'$1 ').trim();
+            document.querySelectorAll('.card-brand').forEach(b => b.classList.remove('active'));
+            if (v.startsWith('4')) document.getElementById('cb-visa').classList.add('active');
+            else if (v.startsWith('5') || v.startsWith('2')) document.getElementById('cb-mc').classList.add('active');
+            else if (v.startsWith('3')) document.getElementById('cb-amex').classList.add('active');
+            // live validation
+            if (v.length === 16) markInput(input, true);
+            else if (v.length > 0) input.classList.remove('valid','invalid');
+        }
+
+        function formatExpiry(input) {
+            let v = input.value.replace(/\D/g,'');
+            if (v.length >= 2) v = v.substring(0,2) + '/' + v.substring(2,4);
+            input.value = v;
+        }
+
+        function selectCrypto(el, coin) {
+            document.querySelectorAll('.crypto-opt').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('cryptoCoinLabel').textContent = 'Endereço ' + coin;
+            document.getElementById('cryptoAddr').textContent = cryptoData[coin].addr;
+            document.getElementById('cryptoAmountLabel').textContent = cryptoData[coin].amount;
+            generateQR();
+        }
+
+        function generateQR() {
+            const grid = document.getElementById('qrGrid');
+            grid.innerHTML = '';
+            const seed = Date.now() % 1000;
+            for (let i = 0; i < 121; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'qr-cell';
+                const r = Math.floor(i/11), c = i%11;
+                const inCorner = (r<3&&c<3)||(r<3&&c>7)||(r>7&&c<3);
+                const filled = inCorner || ((i + seed) % 3 === 0) || (r===5) || (c===5);
+                cell.style.background = filled ? '#000' : '#fff';
+                grid.appendChild(cell);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => { document.body.style.opacity = '1'; }, 100);
+        });
+    </script>
+</body>
+</html>
